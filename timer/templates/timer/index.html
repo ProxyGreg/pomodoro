@@ -50,20 +50,24 @@
             font-style: italic;
         }
         .bottom-left-container {
-            background-color: #ffffff; /* Same background as timer */
-            padding: 20px; /* Smaller padding */
+            background-color: #ffffff; 
+            padding: 20px; 
             border-radius: 15px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             text-align: center;
-            margin-top: 20px; /* Add space between timer and this section */
+            margin-top: 20px; 
             color: #6c757d;
             font-style: italic;
+            /* Added flex properties for content alignment */
+            display: flex; 
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
 <body>
     <div class="container vh-100 d-flex align-items-center"> <!-- Make container full height and center content vertically -->
-        <div class="row w-100 justify-content-center align-items-start"> <!-- Align items to start to prevent stretching -->
+        <div class="row w-100 justify-content-center align-items-stretch"> <!-- Changed align-items-start to align-items-stretch -->
             <!-- Timer Column -->
             <div class="col-lg-5 mb-4 mb-lg-0"> <!-- Adjusted column size, added margin bottom for small screens -->
                 <div class="timer-container">
@@ -78,11 +82,11 @@
                 </div>
             </div>
             <!-- Blank/Placeholder Column -->
-            <div class="col-lg-5"> 
+            <div class="col-lg-5 d-flex flex-column"> <!-- Added d-flex flex-column -->
                 <div class="placeholder-column">
                     <span>"The key is not to prioritize what's on your schedule, but to schedule your priorities." - Stephen Covey</span>
                 </div>
-                <div class="bottom-left-container"> 
+                <div class="bottom-left-container flex-grow-1"> <!-- Added flex-grow-1 -->
                     <span>"Focus on being productive instead of busy." - Tim Ferriss</span>
                 </div>
             </div>
