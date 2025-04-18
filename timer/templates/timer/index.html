@@ -37,12 +37,35 @@
             padding: 10px 20px;
             font-size: 1rem;
         }
+        .placeholder-column {
+            background-color: #e9ecef; /* Light gray background */
+            padding: 40px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #6c757d;
+            min-height: 300px; /* Ensure it has some height */
+            font-style: italic;
+        }
+        .bottom-left-container {
+            background-color: #ffffff; /* Same background as timer */
+            padding: 20px; /* Smaller padding */
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-top: 20px; /* Add space between timer and this section */
+            color: #6c757d;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6">
+    <div class="container vh-100 d-flex align-items-center"> <!-- Make container full height and center content vertically -->
+        <div class="row w-100 justify-content-center align-items-start"> <!-- Align items to start to prevent stretching -->
+            <!-- Timer Column -->
+            <div class="col-lg-5 mb-4 mb-lg-0"> <!-- Adjusted column size, added margin bottom for small screens -->
                 <div class="timer-container">
                     <h1 class="mb-4">Pomodoro Timer</h1>
                     <div id="status-message">Work Time</div>
@@ -52,6 +75,15 @@
                         <button id="reset-btn" class="btn btn-danger">Reset</button>
                     </div>
                      <div id="session-count" class="mt-4">Sessions Completed: 0</div>
+                </div>
+            </div>
+            <!-- Blank/Placeholder Column -->
+            <div class="col-lg-5"> 
+                <div class="placeholder-column">
+                    <span>"The key is not to prioritize what's on your schedule, but to schedule your priorities." - Stephen Covey</span>
+                </div>
+                <div class="bottom-left-container"> 
+                    <span>"Focus on being productive instead of busy." - Tim Ferriss</span>
                 </div>
             </div>
         </div>
