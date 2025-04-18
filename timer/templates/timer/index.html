@@ -6,6 +6,8 @@
     <title>Pomodoro Timer</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             display: flex;
@@ -16,7 +18,7 @@
         }
         .timer-container {
             background-color: #ffffff;
-            padding: 40px;
+            /* padding: 40px; Replaced by Bootstrap class */
             border-radius: 15px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             text-align: center;
@@ -28,7 +30,7 @@
             color: #343a40;
         }
         #status-message {
-            font-size: 1.5rem;
+            /* font-size: 1.5rem; Replaced by Bootstrap class */
             margin-bottom: 30px;
             color: #6c757d;
         }
@@ -38,79 +40,197 @@
             font-size: 1rem;
         }
         .placeholder-column {
-            background-color: #e9ecef; /* Light gray background */
-            padding: 40px;
+            background-color: #e9ecef;
+            /* padding: 20px; Replaced by Bootstrap class */
             border-radius: 15px;
             display: flex;
+            flex-direction: column; /* Align title and chart vertically */
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start; /* Align content to top */
             text-align: center;
             color: #6c757d;
-            min-height: 300px; /* Ensure it has some height */
-            font-style: italic;
+            min-height: 300px; 
+            font-style: normal; /* Remove italic from placeholder */
         }
         .bottom-left-container {
-            background-color: #ffffff; 
-            padding: 20px; 
+            background-color: #ffffff;
+            /* padding: 30px; Replaced by Bootstrap class */
             border-radius: 15px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            text-align: center;
-            margin-top: 20px; 
-            color: #6c757d;
-            font-style: italic;
-            /* Added flex properties for content alignment */
-            display: flex; 
+            /* Removed centering, allow block layout */
+            /* display: flex; 
             align-items: center;
-            justify-content: center;
+            justify-content: center; */
+            margin-top: 20px;
+            color: #343a40; /* Darker text for settings */
+            text-align: left; /* Align text to left */
+        }
+        .setting-item label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .setting-item input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+         .setting-item .value-display {
+            font-weight: normal;
+            color: #6c757d;
+        }
+        /* Styles for Circular Progress */
+        .circle-progress {
+            position: relative;
+            /* width: 200px; Using max-width and percentage now */
+            /* height: 200px; */
+            width: 75%; /* Relative width */
+            max-width: 250px; /* Max size */
+            margin: 20px auto; 
+            aspect-ratio: 1 / 1; /* Maintain square shape */
+        }
+        .circle-progress svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg); /* Start progress from top */
+        }
+        .circle-progress circle {
+            fill: none;
+            stroke-width: 7; /* Stroke thickness (Reduced from 10) */
+        }
+        .circle-bg {
+            stroke: #e6e6e6; /* Background circle color */
+        }
+        .circle-fg {
+            stroke: #007bff; /* Default color, will be overwritten by JS */
+            stroke-linecap: round; 
+            transition: stroke-dashoffset 0.6s ease; /* Increased duration for smoother transition */
+        }
+        .circle-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            /* font-size: 2.5rem; Using clamp */
+            font-size: clamp(1.8rem, 6vw, 3rem); /* Responsive font size */
+            font-weight: bold;
+            color: #343a40;
+        }
+        .chart-container {
+             width: 100%; 
+             max-width: 400px; /* Limit chart width */
+             height: 200px; /* Fixed height for chart area */
+             margin-top: 15px;
         }
     </style>
 </head>
 <body>
-    <div class="container vh-100 d-flex align-items-center"> <!-- Make container full height and center content vertically -->
-        <div class="row w-100 justify-content-center align-items-stretch"> <!-- Changed align-items-start to align-items-stretch -->
+    <!-- Add a dummy form for CSRF token -->
+    <form id="csrf-form" style="display: none;">{% csrf_token %}</form>
+
+    <div class="container vh-100 d-flex flex-column justify-content-center"> <!-- Adjusted container for flex column and centering -->
+        <!-- Main Title -->
+        <h1 class="text-center my-4 fs-2">
+            <a href="https://t.me/gavrilez" target="_blank" rel="noopener noreferrer" class="text-decoration-none text-dark">
+                Perfect pomodoro
+            </a>
+        </h1>
+
+        <!-- Main Content Row -->
+        <div class="row w-100 justify-content-center align-items-stretch flex-grow-1"> <!-- Allow row to grow -->
             <!-- Timer Column -->
-            <div class="col-lg-5 mb-4 mb-lg-0"> <!-- Adjusted column size, added margin bottom for small screens -->
-                <div class="timer-container">
-                    <h1 class="mb-4">Pomodoro Timer</h1>
-                    <div id="status-message">Work Time</div>
-                    <div id="timer-display">25:00</div>
-                    <div class="controls">
-                        <button id="start-pause-btn" class="btn btn-success">Start</button>
-                        <button id="reset-btn" class="btn btn-danger">Reset</button>
+            <div class="col-lg-5 mb-4 mb-lg-0">
+                <div class="timer-container p-3 p-md-4"> <!-- Added responsive padding -->
+                    <h1 class="mb-4 fs-4">Pomodoro Timer</h1> <!-- Slightly smaller title -->
+                    <div id="status-message" class="fs-5 mb-4">Work Time</div> <!-- Responsive font size + adjusted margin -->
+                    <!-- Circular Progress Bar -->
+                    <div class="circle-progress">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="circle-bg" cx="50" cy="50" r="45"></circle>
+                            <circle class="circle-fg" id="progress-circle" cx="50" cy="50" r="45"></circle>
+                        </svg>
+                        <div class="circle-text" id="time-text">25:00</div>
                     </div>
-                     <div id="session-count" class="mt-4">Sessions Completed: 0</div>
+                    <div class="controls mt-4"> <!-- Added margin top -->
+                        <button id="start-pause-btn" class="btn btn-success px-3 py-2">Start</button> <!-- Adjusted padding -->
+                        <button id="reset-btn" class="btn btn-danger px-3 py-2">Reset</button> <!-- Adjusted padding -->
+                    </div>
+                     <div id="session-count" class="mt-4 text-muted">(4 rounds)</div> <!-- Added text-muted -->
                 </div>
             </div>
-            <!-- Blank/Placeholder Column -->
-            <div class="col-lg-5 d-flex flex-column"> <!-- Added d-flex flex-column -->
-                <div class="placeholder-column">
-                    <span>"The key is not to prioritize what's on your schedule, but to schedule your priorities." - Stephen Covey</span>
+            <!-- Settings/Summary Column -->
+            <div class="col-lg-5 d-flex flex-column">
+                <!-- Summary Chart Area -->
+                <div class="placeholder-column p-3 p-md-4"> <!-- Added responsive padding -->
+                     <h5 class="mb-2 fs-5">Recent Progress</h5> <!-- Responsive font size -->
+                     <div class="chart-container">
+                        <canvas id="dailyRoundsChart"></canvas>
+                    </div>
+                     <small class="text-muted mt-2">Completed rounds (last 5 days)</small>
                 </div>
-                <div class="bottom-left-container flex-grow-1"> <!-- Added flex-grow-1 -->
-                    <span>"Focus on being productive instead of busy." - Tim Ferriss</span>
+                <!-- Settings Container -->
+                <div class="bottom-left-container flex-grow-1 p-3 p-md-4"> <!-- Added responsive padding -->
+                    <h5 class="mb-3 text-center fs-5">Settings</h5> <!-- Responsive font size -->
+                    <div class="setting-item mb-3">
+                        <label for="work-duration" class="form-label">Work Duration: <span id="work-duration-val" class="value-display">25 min 0 sec</span></label>
+                        <input type="range" class="form-range" id="work-duration" min="30" max="6000" value="1500" step="30"> <!-- Use form-range -->
+                    </div>
+                    <div class="setting-item mb-3">
+                        <label for="break-duration" class="form-label">Break Duration: <span id="break-duration-val" class="value-display">5 min 0 sec</span></label>
+                        <input type="range" class="form-range" id="break-duration" min="30" max="6000" value="300" step="30"> <!-- Use form-range -->
+                    </div>
+                    <div class="setting-item">
+                        <label for="rounds-count" class="form-label">Rounds: <span id="rounds-count-val" class="value-display">4</span></label>
+                        <input type="range" class="form-range" id="rounds-count" min="1" max="10" value="4" step="1"> <!-- Use form-range -->
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Pass chart data from Django to JS -->
+    {{ chart_labels|json_script:"chart-labels" }}
+    {{ chart_data|json_script:"chart-data" }}
+
     <!-- Bootstrap JS Bundle (includes Popper) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Timer Logic Script (will be added later) -->
+    <!-- Timer Logic Script -->
     <script>
-        const timerDisplay = document.getElementById('timer-display');
+        // Timer Display Elements
         const statusMessage = document.getElementById('status-message');
+        const sessionCountDisplay = document.getElementById('session-count');
+        const progressCircle = document.getElementById('progress-circle');
+        const timeText = document.getElementById('time-text');
+        const radius = progressCircle.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+
+        // CSRF Token
+        const csrfToken = document.querySelector('#csrf-form [name=csrfmiddlewaretoken]').value;
+
+        // Set initial stroke properties
+        progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressCircle.style.strokeDashoffset = circumference;
+
+        // Control Buttons
         const startPauseBtn = document.getElementById('start-pause-btn');
         const resetBtn = document.getElementById('reset-btn');
-        const sessionCountDisplay = document.getElementById('session-count');
 
-        const WORK_TIME = 25 * 60; // 25 minutes in seconds
-        const BREAK_TIME = 5 * 60;  // 5 minutes in seconds
+        // Settings Elements
+        const workDurationSlider = document.getElementById('work-duration');
+        const breakDurationSlider = document.getElementById('break-duration');
+        const roundsSlider = document.getElementById('rounds-count');
+        const workDurationVal = document.getElementById('work-duration-val');
+        const breakDurationVal = document.getElementById('break-duration-val');
+        const roundsVal = document.getElementById('rounds-count-val');
 
-        let timerInterval = null;
-        let timeLeft = WORK_TIME;
+        // Timer State Variables
+        let WORK_TIME = parseInt(workDurationSlider.value); // Value is now directly in seconds
+        let BREAK_TIME = parseInt(breakDurationSlider.value); // Value is now directly in seconds
+        let totalRounds = parseInt(roundsSlider.value);
+        let currentRound = 1;
         let isWorkTime = true;
         let isPaused = true;
-        let sessionsCompleted = 0;
+        let timerInterval = null;
+        let timeLeft = WORK_TIME;
 
         function formatTime(seconds) {
             const minutes = Math.floor(seconds / 60);
@@ -119,37 +239,84 @@
         }
 
         function updateDisplay() {
-            timerDisplay.textContent = formatTime(timeLeft);
-            statusMessage.textContent = isWorkTime ? 'Work Time' : 'Break Time';
-            sessionCountDisplay.textContent = `Sessions Completed: ${sessionsCompleted}`;
+            const totalDuration = isWorkTime ? WORK_TIME : BREAK_TIME;
+            const progress = timeLeft / totalDuration;
+            // Ensure offset doesn't go below 0 or above circumference
+            const offset = Math.max(0, Math.min(circumference, circumference * (1 - progress))); 
+            progressCircle.style.strokeDashoffset = offset;
+
+            // Update time text inside the circle
+            timeText.textContent = formatTime(timeLeft >= 0 ? timeLeft : 0); // Show 00:00 at the end
+
+            // Update status message and round counter
+            statusMessage.textContent = isWorkTime ? `Work Time (Round ${currentRound})` : `Break Time (Round ${currentRound})`;
+            if (!isPaused && timerInterval) {
+                 sessionCountDisplay.textContent = `Round ${currentRound} of ${totalRounds}`;
+            } else {
+                 // Show total rounds when paused/reset, or completion message
+                 if (currentRound > totalRounds) {
+                     sessionCountDisplay.textContent = `Finished ${totalRounds} rounds!`;
+                 } else {
+                     sessionCountDisplay.textContent = `(${totalRounds} rounds)`;
+                 }
+            }
+
+            // Update slider display values
+            // Format work duration display
+            const workMinutes = Math.floor(parseInt(workDurationSlider.value) / 60);
+            const workSeconds = parseInt(workDurationSlider.value) % 60;
+            workDurationVal.textContent = `${workMinutes} min ${workSeconds} sec`;
+            // Format break duration display
+            const breakMinutes = Math.floor(parseInt(breakDurationSlider.value) / 60);
+            const breakSeconds = parseInt(breakDurationSlider.value) % 60;
+            breakDurationVal.textContent = `${breakMinutes} min ${breakSeconds} sec`;
+            roundsVal.textContent = roundsSlider.value;
+
+            // Change circle color
+            progressCircle.style.stroke = '#ffc107'; // Set to yellow (Bootstrap warning color)
         }
 
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
             isPaused = false;
+            disableSettings(); // Disable sliders while running
             startPauseBtn.textContent = 'Pause';
-            startPauseBtn.classList.remove('btn-success');
-            startPauseBtn.classList.add('btn-warning');
+            startPauseBtn.classList.replace('btn-success', 'btn-warning');
 
             timerInterval = setInterval(() => {
                 timeLeft--;
                 updateDisplay();
 
-                if (timeLeft <= 0) {
+                if (timeLeft < 0) { // Use < 0 to show 00:00 before switching
                     clearInterval(timerInterval);
-                    // Play a sound or notification (optional)
-                    // alert(isWorkTime ? "Work session finished! Time for a break." : "Break finished! Time for work.");
-
+                    
                     if (isWorkTime) {
-                        sessionsCompleted++;
+                        // Work finished, start break
                         timeLeft = BREAK_TIME;
                         isWorkTime = false;
+                        statusMessage.textContent = `Break Time (Round ${currentRound})`;
+                        startTimer(); // Start break timer immediately
                     } else {
-                        timeLeft = WORK_TIME;
-                        isWorkTime = true;
+                        // Break finished, increment round count via API
+                        incrementRoundCountAPI(); 
+
+                        // Check rounds
+                        currentRound++;
+                        if (currentRound > totalRounds) {
+                            // All rounds finished
+                            alert("Pomodoro session complete!");
+                            resetTimer();
+                            // Note: updateDisplay in resetTimer will handle the finished message
+                            return; // Stop further execution
+                        } else {
+                            // Start next work round
+                            timeLeft = WORK_TIME;
+                            isWorkTime = true;
+                            statusMessage.textContent = `Work Time (Round ${currentRound})`;
+                            startTimer(); // Start next work timer
+                        }
                     }
-                    updateDisplay();
-                    startTimer(); // Automatically start the next phase
+                    // updateDisplay(); // updateDisplay is called within startTimer or resetTimer
                 }
             }, 1000);
         }
@@ -157,24 +324,100 @@
         function pauseTimer() {
             clearInterval(timerInterval);
             isPaused = true;
+            enableSettings(); // Enable sliders when paused
             startPauseBtn.textContent = 'Start';
-            startPauseBtn.classList.remove('btn-warning');
-            startPauseBtn.classList.add('btn-success');
+            startPauseBtn.classList.replace('btn-warning', 'btn-success');
         }
 
         function resetTimer() {
             clearInterval(timerInterval);
             isPaused = true;
+            enableSettings();
             isWorkTime = true;
+            currentRound = 1;
+            WORK_TIME = parseInt(workDurationSlider.value); // Use seconds directly
+            BREAK_TIME = parseInt(breakDurationSlider.value); // Use seconds directly
+            totalRounds = parseInt(roundsSlider.value);
             timeLeft = WORK_TIME;
-            // Resetting sessionsCompleted on explicit reset, could be optional
-            // sessionsCompleted = 0; 
-            updateDisplay();
+
             startPauseBtn.textContent = 'Start';
-            startPauseBtn.classList.remove('btn-warning');
-            startPauseBtn.classList.add('btn-success');
+            startPauseBtn.classList.replace('btn-warning', 'btn-success');
+            // Explicitly call updateDisplay to reset visuals including circle
+            updateDisplay(); 
         }
 
+        function disableSettings() {
+            workDurationSlider.disabled = true;
+            breakDurationSlider.disabled = true;
+            roundsSlider.disabled = true;
+        }
+
+        function enableSettings() {
+            workDurationSlider.disabled = false;
+            breakDurationSlider.disabled = false;
+            roundsSlider.disabled = false;
+        }
+
+        // Function to call the API
+        function incrementRoundCountAPI() {
+            fetch('/api/increment-round/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                // No body needed as user ID is from cookie
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Round count incremented. Rounds today:', data.rounds_today);
+                    // NOTE: We are not updating the chart dynamically after each round here.
+                    // The chart reflects data loaded initially or on page refresh.
+                    // Dynamic chart update would require more complex logic.
+                } else {
+                    console.error('Failed to increment round count:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error calling increment API:', error);
+            });
+        }
+
+        // Event Listeners for Sliders
+        workDurationSlider.addEventListener('input', () => {
+            WORK_TIME = parseInt(workDurationSlider.value); // Update with seconds
+            // Update display label with minutes and seconds
+            const minutes = Math.floor(WORK_TIME / 60);
+            const seconds = WORK_TIME % 60;
+            workDurationVal.textContent = `${minutes} min ${seconds} sec`;
+            if (isPaused && isWorkTime) {
+                timeLeft = WORK_TIME;
+                updateDisplay(); // Update circle/text
+            }
+        });
+
+        breakDurationSlider.addEventListener('input', () => {
+            BREAK_TIME = parseInt(breakDurationSlider.value); // Update with seconds
+            // Update display label with minutes and seconds
+            const minutes = Math.floor(BREAK_TIME / 60);
+            const seconds = BREAK_TIME % 60;
+            breakDurationVal.textContent = `${minutes} min ${seconds} sec`;
+             if (isPaused && !isWorkTime) {
+                timeLeft = BREAK_TIME;
+                updateDisplay(); // Update circle/text
+            }
+        });
+
+        roundsSlider.addEventListener('input', () => {
+            totalRounds = parseInt(roundsSlider.value);
+            roundsVal.textContent = roundsSlider.value;
+             if (isPaused) {
+                 updateDisplay(); // Update round text
+             }
+        });
+
+        // Event Listeners for Buttons
         startPauseBtn.addEventListener('click', () => {
             if (isPaused) {
                 startTimer();
@@ -185,8 +428,69 @@
 
         resetBtn.addEventListener('click', resetTimer);
 
-        // Initial display setup
+        // --- Chart.js Initialization --- 
+        const chartLabelsJson = document.getElementById('chart-labels');
+        const chartDataJson = document.getElementById('chart-data');
+
+        if (chartLabelsJson && chartDataJson && Chart) { // Check if Chart object exists
+            const chartLabels = JSON.parse(chartLabelsJson.textContent);
+            const chartData = JSON.parse(chartDataJson.textContent);
+
+            if (chartLabels.length > 0) { // Only render if there are labels
+                const ctx = document.getElementById('dailyRoundsChart').getContext('2d');
+                const dailyRoundsChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            label: 'Completed Rounds',
+                            data: chartData,
+                            backgroundColor: 'rgba(255, 193, 7, 0.6)', // Semi-transparent yellow
+                            borderColor: 'rgba(255, 193, 7, 1)',     // Solid yellow border
+                            borderWidth: 1,
+                            borderRadius: 4, // Slightly rounded bars
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0 // Ensure integer ticks only
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false // Hide vertical grid lines
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                displayColors: false // Don't show color box in tooltip
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Optional: Display a message if no data is available
+                const chartContainer = document.querySelector('.chart-container');
+                if (chartContainer) {
+                    chartContainer.innerHTML = '<p class="text-muted small text-center">No recent activity data.</p>';
+                }
+            }
+        } else {
+             console.error("Chart.js library or data elements not found.");
+        }
+
+        // --- Initial Timer Setup --- 
         updateDisplay();
+
     </script>
 </body>
 </html> 
